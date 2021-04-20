@@ -1,3 +1,17 @@
+/// *SONGS & BASICS* ///
+#define NUM_SONGS 2
+String SONGS[NUM_SONGS] = {"1234","9783"};
+
+char CODE_ENTERED[4];
+int CODE_COUNTER = 0;
+
+
+/// *MODES/STATES* ///
+int MODE = 0;
+// mode 0: waiting;
+// mode 1: proximity triggered;
+// mode 2: in use;
+
 /// *KEYBOARD SETUP* ///
 #include <Keypad.h>
 const byte ROWS = 4; //four rows
@@ -49,10 +63,29 @@ void setup() {
 }
 
 void loop() {
-  /// input from keyboard verification
-  char customKey = customKeypad.getKey();
-  if (customKey){
-    Serial.print("Pressed ");
-    Serial.println(customKey);
+  // input from keyboard verification
+//  char customKey = customKeypad.getKey();
+//   if (customKey){
+//     Serial.print("Pressed ");
+//     Serial.println(customKey);
+//     CODE_ENTERED[CODE_COUNTER++]=customKey;     
+//   }
+  
+  for (int i = 0; i < 4; ++i){
+    while((CODE_ENTERED[i] = customKeypad.getKey())==NO_KEY) {
+      delay(1); // Just wait for a key
+    } 
+    // Wait for the key to be released
+    while(customKeypad.getKey() != NO_KEY) {
+      delay(1);
+    } 
+
   }
+
+  Serial.print("Entered number is ");
+  Serial.print(CODE_ENTERED[0]);
+  Serial.print(CODE_ENTERED[1]);
+  Serial.print(CODE_ENTERED[2]);
+  Serial.println(CODE_ENTERED[3]);
+  delay(500);
 }

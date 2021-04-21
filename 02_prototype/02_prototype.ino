@@ -125,7 +125,7 @@ bool song_was_found = false;
 //      TIMEOUT_DIGIT = false;
       
 //      if(DEBUG==true){Serial.println("Song Found...");Serial.println(SONGS[i]+".mp3");}
-      
+      if (i<10) {
       String s = "/track00"+String(i+1)+".mp3";
       char filename[14]; // null termination. thanks for the ground work fuzzy
       s.toCharArray(filename, 14);
@@ -134,7 +134,15 @@ bool song_was_found = false;
       musicPlayer.startPlayingFile(filename); 
       Serial.println("done playing");
  //     PLAYED_A_SONG = true;
-      
+      } else {
+        String s = "/track0"+String(i+1)+".mp3";
+      char filename[14]; // null termination. thanks for the ground work fuzzy
+      s.toCharArray(filename, 14);
+      Serial.println(s);
+      //musicPlayer.setVolume(50,50);
+      musicPlayer.startPlayingFile(filename); 
+      Serial.println("done playing");
+       }
     }
   }
 

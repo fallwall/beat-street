@@ -57,8 +57,6 @@ void setup() {
     while (1);  // don't do anything more
   }
 
-  // list files
-  printDirectory(SD.open("/"), 0);
   
   // Set volume for left, right channels. lower numbers == louder volume!
   musicPlayer.setVolume(20,20);
@@ -72,7 +70,7 @@ void setup() {
   
   // Play one file, don't return until complete
   Serial.println(F("Playing track 001"));
-  musicPlayer.playFullFile("/track001.mp3");
+  musicPlayer.playFullFile("/track002.mp3");
   // Play another file in the background, REQUIRES interrupts!
   Serial.println(F("Playing track 002"));
   musicPlayer.startPlayingFile("/track002.mp3");
@@ -107,31 +105,4 @@ void loop() {
   }
 
   delay(100);
-}
-
-
-/// File listing helper
-void printDirectory(File dir, int numTabs) {
-   while(true) {
-     
-     File entry =  dir.openNextFile();
-     if (! entry) {
-       // no more files
-       //Serial.println("**nomorefiles**");
-       break;
-     }
-     for (uint8_t i=0; i<numTabs; i++) {
-       Serial.print('\t');
-     }
-     Serial.print(entry.name());
-     if (entry.isDirectory()) {
-       Serial.println("/");
-       printDirectory(entry, numTabs+1);
-     } else {
-       // files have sizes, directories do not
-       Serial.print("\t\t");
-       Serial.println(entry.size(), DEC);
-     }
-     entry.close();
-   }
 }

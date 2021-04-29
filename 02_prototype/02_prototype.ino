@@ -1,13 +1,16 @@
 /// *SONGS & BASICS* ///
-#define NUM_SONGS 32
+#define NUM_SONGS 49
 String SONGS[NUM_SONGS] = {
-  "1001","1002","1003","1004","1005",
-  "1006","1007","1008","1009","1010",
-  "1011","1012","1013","1014","1015",
-  "1016","1017","1018","1019","1020",
-  "1021","1022","1023","1024","1025",
-  "1026","1027","1028","1029","1030",
-  "1031","1032",
+  "9922","7665","5865","9997","5329",
+  "3505","9498","8787","2400","4957",
+  "9690","2951","5898","2426","6233",
+  "3327","3352","1485","3555","9672",
+  "1967","9904","6981","4536","5911",
+  "4061","3717","9156","2470","1840",
+  "1406","8830","1057","5433","5282",
+  "3201","6730","3905","3968","6666",
+  "1889","7917","7977","8967","8063",
+  "4033","6214","1005","3977"
 };
 
 char CODE_ENTERED[4];
@@ -19,6 +22,27 @@ int MODE = 0;
 // mode 0: waiting;
 // mode 1: proximity triggered;
 // mode 2: in use;
+// mode 3: hang up, idle for a while
+int DEBUG = true;
+
+long MODE_1_TIMER_START;
+long MODE_1_DURATION = 5000; //rings for 5s
+
+bool REPLAY_MODE = true; 
+bool TIMEOUT_DIGIT = false;
+bool PLAYED_A_SONG = false;
+long MODE_2_TIMER_DIGIT_START;
+long MODE_2_DURATION_DIGIT_TIMEOUT = 5000; //
+
+long MODE_3_TIMER_START;
+long MODE_3_DURATION = 5000; //idle for 5s after hangup
+
+
+int VOL_SPEAKER = 10;
+float VOL_SPEAKER_MULTIPLIER = 1.0; //0.0-3.0 (-= 0.5 each time)
+int VOL_HEADSET = 28;
+
+bool BROADCAST = false;
 
 /// *KEYBOARD SETUP* ///
 #include <Keypad.h>
@@ -149,7 +173,7 @@ bool song_was_found = false;
   if(song_was_found == false){
     CODE_COUNTER = 0;
     //TIMEOUT_DIGIT = false;
-    musicPlayer.playFullFile("/track002.mp3");  
+    musicPlayer.playFullFile("/sorry.mp3");  
   }
  
 

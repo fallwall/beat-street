@@ -1,17 +1,6 @@
 /// *SONGS & BASICS* ///
 #define NUM_SONGS 49
-String SONGS[NUM_SONGS] = {
-  "9922","7665","5865","9997","5329",
-  "3505","9498","8787","2400","4957",
-  "9690","2951","5898","2426","6233",
-  "3327","3352","1485","3555","9672",
-  "1967","9904","6981","4536","5911",
-  "4061","3717","9156","2470","1840",
-  "1406","8830","1057","5433","5282",
-  "3201","6730","3905","3968","6666",
-  "1889","7917","7977","8967","8063",
-  "4033","6214","1005","3977"
-};
+String SONGS[NUM_SONGS] = {"9922","7665","5865","9997","5329","3505","9498","8787","2400","4957","9690","2951","5898","2426","6233","3327","3352","1485","3555","9672","1967","9904","6981","4536","5911","4061","3717","9156","2470","1840","1406","8830","1057","5433","5282","3201","6730","3905","3968","6666","1889","7917","7977","8967","8063","4033","6214","1005","3977"};
 
 char CODE_ENTERED[4];
 int CODE_COUNTER = 0;
@@ -42,7 +31,7 @@ int VOL_SPEAKER = 10;
 float VOL_SPEAKER_MULTIPLIER = 1.0; //0.0-3.0 (-= 0.5 each time)
 int VOL_HEADSET = 28;
 
-bool BROADCAST = false;
+bool BROADCAST = true;
 
 /// *KEYBOARD SETUP* ///
 #include <Keypad.h>
@@ -51,7 +40,7 @@ const byte COLS = 3; //three columns
 //define the cymbols on the buttons of the keypads
 char hexaKeys[ROWS][COLS] = {
   {'1','2','3'},
-  {'4','5','6'},
+  {'4','5','6'},  
   {'7','8','9'},
   {'*','0','#'}
 };
@@ -62,7 +51,7 @@ Keypad customKeypad = Keypad( makeKeymap(hexaKeys), rowPins, colPins, ROWS, COLS
 
 
 /// *RANGEFINDER SETUP* ///
-int PROXIMITY_THRESHOLD = 15; //TO ADJUST
+int PROXIMITY_THRESHOLD = 20; //TO ADJUST
 int PIN_PROXIMITY_SENSOR = A8;
 int PROXIMITY_VAL_PREV = 0;
 
@@ -92,96 +81,321 @@ Adafruit_VS1053_FilePlayer musicPlayer = Adafruit_VS1053_FilePlayer(SHIELD_RESET
 
   
 void setup() {
-  Serial.begin(9600);
+   Serial.begin(9600);
+
   //_________________________________________________________ HANDSET HANGUP SWITCH
   pinMode(PIN_HANDSET_SWITCH, INPUT_PULLUP);
-    Serial.println("Adafruit VS1053 Simple Test");
+  digitalWrite(42,HIGH);
 
+  //_________________________________________________________ MP3 SHIELD
   if (! musicPlayer.begin()) { // initialise the music player
-     Serial.println(F("Couldn't find VS1053, do you have the right pins defined?"));
+     Serial.println(F("Couldn't find MP3 Shield, do you have the right pins defined?"));
      while (1);
   }
-  Serial.println(F("VS1053 found"));
-  
-   if (!SD.begin(CARDCS)) {
-    Serial.println(F("SD failed, or not present"));
-    while (1);  // don't do anything more
-  }
-// Set volume for left, right channels. lower numbers == louder volume!
-   musicPlayer.setVolume(20,20);
-  //musicPlayer.startPlayingFile("track002.mp3");
-
-    // If DREQ is on an interrupt pin (on uno, #2 or #3) we can do background
+  Serial.println(F("MP3 shield found"));
+  SD.begin(CARDCS);
+  //musicPlayer.setVolume(100,100); //weird, low is loud! left speaker is handset. right speaker is bell. 
+  // If DREQ is on an interrupt pin (on uno, #2 or #3) we can do background
   // audio playing
   musicPlayer.useInterrupt(VS1053_FILEPLAYER_PIN_INT);  // DREQ int
+
+  pinMode(52,OUTPUT);
+  digitalWrite(52,LOW);
   
-  // Play one file, don't return until complete
-  // Serial.println(F("Playing track 001"));
-  // musicPlayer.playFullFile("/track002.mp3");
-  // Play another file in the background, REQUIRES interrupts!
-  // Serial.println(F("Playing track 002"));
-  // musicPlayer.startPlayingFile("/track002.mp3");
 }
+
+void caseOne() {
+ //1 – proximity triggered, ringing
+      
+      //if(DEBUG==true){Serial.println("MODE 1");}
+      
+      //musicPlayer.setVolume(100,10); //handset off. speaker very loud.
+      musicPlayer.setVolume(45,100); //handset off. speaker very loud.
+      
+      musicPlayer.startPlayingFile("ring.mp3"); //bell sound
+      
+      while (musicPlayer.playingMusic){
+
+        if(DEBUG==true){Serial.print("ring ");}
+      
+        //phone was answered
+        if(digitalRead(PIN_HANDSET_SWITCH)==LOW){ //may have to switch to HIGH !!!
+          musicPlayer.stopPlaying();
+          MODE = 2;   
+          REPLAY_MODE = true;
+          TIMEOUT_DIGIT = false;
+        }
+        
+        if(millis() - MODE_1_TIMER_START > MODE_1_DURATION){
+          musicPlayer.stopPlaying();
+          MODE = 0; 
+        }
+        delay(100);
+      }
+ }
+
+void caseTwo() {
+  //2 – in use
+
+      //if(DEBUG==true){Serial.println("MODE 2");}
+
+      //remember! high number = low volume. low number = high volume. 100 = off. 0 = max. 
+      if(BROADCAST==true){
+        //if(DEBUG==true){Serial.println("Broadcasting...");}
+        //musicPlayer.setVolume(VOL_HEADSET,VOL_SPEAKER); //handset. speaker.  
+        musicPlayer.setVolume(VOL_SPEAKER,VOL_HEADSET); 
+      }else{
+        //if(DEBUG==true){Serial.println("Not Broadcasting...");}
+        //musicPlayer.setVolume(VOL_HEADSET,100); //handset. speaker off. 
+        musicPlayer.setVolume(100,VOL_HEADSET);
+      }
+
+      if(REPLAY_MODE==true){ //this goes to false once a digit is clicked 
+        // if(DEBUG==true){Serial.println("picked up!");}
+        musicPlayer.stopPlaying();
+        musicPlayer.startPlayingFile("hello.mp3"); //play start sound
+      }
+      if(TIMEOUT_DIGIT==true){ //turns on after you hit one digit
+        if(millis() - MODE_2_TIMER_DIGIT_START > MODE_2_DURATION_DIGIT_TIMEOUT){
+          CODE_COUNTER = 0;
+          TIMEOUT_DIGIT = false;
+          if(DEBUG==true){Serial.println("Digit Timeout...");}
+          musicPlayer.stopPlaying();
+          musicPlayer.startPlayingFile("sorry.mp3"); //play start sound
+        }
+      }
+
+      //read keypad
+      keypad_to_song();
+
+      //hung up
+      if(digitalRead(PIN_HANDSET_SWITCH)==HIGH){  //may have to switch to LOW !!!
+        musicPlayer.stopPlaying();
+        MODE = 3;
+        MODE_3_TIMER_START = millis();
+      }
+
+      //when music or message is playing we are stuck in this loop :U
+      while (musicPlayer.playingMusic){
+
+        //hung up
+        if(digitalRead(PIN_HANDSET_SWITCH)==HIGH){  //may have to switch to LOW !!!
+          musicPlayer.stopPlaying();
+          MODE = 3;
+          MODE_3_TIMER_START = millis();
+          PLAYED_A_SONG = false;
+        }
+
+        //still need to read keypad
+        keypad_to_song();
+        
+      }
+
+      if(PLAYED_A_SONG==true){ //we are here because a song has finished playing. why don't we randomly play another?
+        if(DEBUG==true){Serial.println("Song Finished...");}
+        int randIdx = int(random(0, 49));
+        play_song(SONGS[randIdx]);
+      }
+        
+  }
+
+ void caseThree() {
+   //3 – hangup, idle for XXXXms
+
+      BROADCAST = false;
+      PLAYED_A_SONG = false;
+      
+      if(DEBUG==true){Serial.println("MODE 3");}
+
+      //idle timer (to prevent it from ringing right away)
+      if(millis() - MODE_3_TIMER_START > MODE_3_DURATION){
+        MODE = 0;
+      }
+
+      //pickup right after hangup
+      if(digitalRead(PIN_HANDSET_SWITCH)==LOW){ //may have to switch to HIGH !!!
+        musicPlayer.stopPlaying();
+        MODE = 2;   
+        REPLAY_MODE = true;
+      } 
+    }
+
+void caseZero() {
+  if(DEBUG==true){Serial.println("MODE 0");}
+      if(DEBUG==true){Serial.println(analogRead(PIN_PROXIMITY_SENSOR));}
+
+      //got two readings in a row below sensor threshold
+      if(analogRead(PIN_PROXIMITY_SENSOR) < PROXIMITY_THRESHOLD && PROXIMITY_VAL_PREV < PROXIMITY_THRESHOLD){
+        MODE = 1;
+        MODE_1_TIMER_START = millis();
+      }
+      PROXIMITY_VAL_PREV = analogRead(PIN_PROXIMITY_SENSOR);
+      
+      delay(100);
+  }
 
 void loop() {
   
-    // Serial.println(digitalRead(PIN_HANDSET_SWITCH));
-    
-  for (int i = 0; i < 4; ++i){
-    while((CODE_ENTERED[i] = customKeypad.getKey())==NO_KEY) {
-      delay(1); // Just wait for a key
-    } 
-    // Wait for the key to be released
-    while(customKeypad.getKey() != NO_KEY) {
-      delay(1);
-    } 
+  switch (MODE) {
+    case 1:
+      caseOne();
+      break;
+    case 2:
+      caseTwo();
+      break;
+    case 3:
+      caseThree();
+      break;
+    default:
+      caseZero();
+      break;
     }
-    String code = String(CODE_ENTERED[0]) + String(CODE_ENTERED[1]) + String(CODE_ENTERED[2]) + String(CODE_ENTERED[3]);
   
-  Serial.println("Entered number is ");
-  Serial.println(code);
-bool song_was_found = false;
+}
+
+void keypad_to_song(){
+  //if(DEBUG==true){Serial.println("key");}
+  char key = customKeypad.getKey();
+  if(key=='#'){ //increase volume
+
+    if(DEBUG==true){Serial.println("#");}
+
+    VOL_SPEAKER_MULTIPLIER -= 0.5;
+    if(VOL_SPEAKER_MULTIPLIER<0){VOL_SPEAKER_MULTIPLIER=3.0;}
+    VOL_SPEAKER = int(10.0*VOL_SPEAKER_MULTIPLIER);
+    VOL_HEADSET = VOL_SPEAKER + 20;
+
+    if(DEBUG==true){Serial.print(VOL_SPEAKER);Serial.print(",");Serial.print(VOL_HEADSET);Serial.println();}
+
+    if(BROADCAST==true){
+      //musicPlayer.setVolume(VOL_HEADSET,VOL_SPEAKER); //handset. speaker. 
+      musicPlayer.setVolume(VOL_SPEAKER,VOL_HEADSET); 
+    }else{
+      //musicPlayer.setVolume(VOL_HEADSET,100); //handset. speaker off. 
+      musicPlayer.setVolume(100,VOL_HEADSET);
+    }
+    
+  }
+  if(key=='*'){ //toggle broadcast
+    
+    BROADCAST = !BROADCAST;
+
+    if(BROADCAST==true){
+      //musicPlayer.setVolume(VOL_HEADSET,VOL_SPEAKER); //handset. speaker.  
+      musicPlayer.setVolume(VOL_SPEAKER,VOL_HEADSET);
+    }else{
+      //musicPlayer.setVolume(VOL_HEADSET,100); //handset. speaker off. 
+      musicPlayer.setVolume(100,VOL_HEADSET); //handset. speaker off. 
+    }
+    
+  }
+  if(key=='1'){
+    musicPlayer.stopPlaying();
+    musicPlayer.playFullFile("k1.wav");
+    CODE_ENTERED[CODE_COUNTER] = '1';
+  }
+  if(key=='2'){
+    musicPlayer.stopPlaying();
+    musicPlayer.playFullFile("k2.wav");
+    CODE_ENTERED[CODE_COUNTER] = '2';
+  }
+  if(key=='3'){
+    musicPlayer.stopPlaying();
+    musicPlayer.playFullFile("k3.wav");
+    CODE_ENTERED[CODE_COUNTER] = '3';
+  }
+  if(key=='4'){
+    musicPlayer.stopPlaying();
+    musicPlayer.playFullFile("k4.wav");
+    CODE_ENTERED[CODE_COUNTER] = '4';
+  }
+  if(key=='5'){
+    musicPlayer.stopPlaying();
+    musicPlayer.playFullFile("k5.wav");
+    CODE_ENTERED[CODE_COUNTER] = '5';
+  }
+  if(key=='6'){
+    musicPlayer.stopPlaying();
+    musicPlayer.playFullFile("k6.wav");
+    CODE_ENTERED[CODE_COUNTER] = '6';
+  }
+  if(key=='7'){
+    musicPlayer.stopPlaying();
+    musicPlayer.playFullFile("k7.wav");
+    CODE_ENTERED[CODE_COUNTER] = '7';
+  }
+  if(key=='8'){
+    musicPlayer.stopPlaying();
+    musicPlayer.playFullFile("k8.wav");
+    CODE_ENTERED[CODE_COUNTER] = '8';
+  }
+  if(key=='9'){
+    musicPlayer.stopPlaying();
+    musicPlayer.playFullFile("k9.wav");
+    CODE_ENTERED[CODE_COUNTER] = '9';
+  }
+  if(key=='0'){
+    musicPlayer.stopPlaying();
+    musicPlayer.playFullFile("k0.wav");
+    CODE_ENTERED[CODE_COUNTER] = '0';
+  }
+  if(key=='0'||key=='1'||key=='2'||key=='3'||key=='4'||key=='5'||key=='6'||key=='7'||key=='8'||key=='9'){
+    MODE_2_TIMER_DIGIT_START = millis(); TIMEOUT_DIGIT = true; REPLAY_MODE = false; PLAYED_A_SONG = false; 
+    CODE_COUNTER++; if(CODE_COUNTER==4){code_entered();}
+  }
+}
+
+
+void code_entered(){
+
+  TIMEOUT_DIGIT = false;
+
+  String code_4 = String(CODE_ENTERED[0]) + String(CODE_ENTERED[1]) + String(CODE_ENTERED[2]) + String(CODE_ENTERED[3]);
+
+  bool song_was_found = false;
   for(int i=0;i<NUM_SONGS;i++){
-    if(code == SONGS[i]){
+    if(code_4 == SONGS[i]){
+      
       song_was_found = true;
 
       CODE_COUNTER = 0;
-//      TIMEOUT_DIGIT = false;
+      TIMEOUT_DIGIT = false;
+      Serial.println("at this point!");
+      if(DEBUG==true){Serial.println("Song Found...");Serial.println(SONGS[i]+".mp3");}
       
-//      if(DEBUG==true){Serial.println("Song Found...");Serial.println(SONGS[i]+".mp3");}
-      if (i<10) {
-      String s = "/track00"+String(i+1)+".mp3";
-      char filename[14]; // null termination. thanks for the ground work fuzzy
-      s.toCharArray(filename, 14);
-      Serial.println(s);
-      //musicPlayer.setVolume(50,50);
+      String s = SONGS[i]+".mp3";
+      char filename[9]; //learned the hard way about null termination. fuk you C! 
+      
+      s.toCharArray(filename, 9);
+      
       musicPlayer.startPlayingFile(filename); 
-      Serial.println("done playing");
- //     PLAYED_A_SONG = true;
-      } else {
-        String s = "/track0"+String(i+1)+".mp3";
-      char filename[14]; // null termination. thanks for the ground work fuzzy
-      s.toCharArray(filename, 14);
-      Serial.println(s);
-      //musicPlayer.setVolume(50,50);
-      musicPlayer.startPlayingFile(filename); 
-      Serial.println("done playing");
-       }
+   
+      PLAYED_A_SONG = true;
+      
     }
   }
 
   if(song_was_found == false){
     CODE_COUNTER = 0;
-    //TIMEOUT_DIGIT = false;
-    musicPlayer.playFullFile("/sorry.mp3");  
+    TIMEOUT_DIGIT = false;
+    musicPlayer.startPlayingFile("sorry.mp3");  
   }
- 
-
-  delay(5000);
-
-
   
- 
-  //musicPlayer.playFullFile("/track021.mp3");
-  
+}
+
+
+void play_song(String song){
+
+      CODE_COUNTER = 0;
+      TIMEOUT_DIGIT = false;
+      
+      String s = song+".mp3";
+
+      if(DEBUG==true){Serial.println("Jukebox...");Serial.println(song+".mp3");}
+
+      
+      char filename[9]; //learned the hard way about null termination. fuk you C! 
+      s.toCharArray(filename, 9);
+      musicPlayer.startPlayingFile(filename); 
+      
 }
